@@ -17,6 +17,15 @@ import { listSkills } from './skills.js';
 
 export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry'> {}
 
+function repaveScopedProjectId(req: { get(name: string): string | undefined }): string | null {
+  const value = (
+    req.get('x-repave-od-project-id') ??
+    req.get('x-od-project-scope') ??
+    ''
+  ).trim();
+  return /^[A-Za-z0-9._-]{1,128}$/.test(value) ? value : null;
+}
+
 export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDeps) {
   const { db, design } = ctx;
   const { sendApiError, createSseResponse } = ctx.http;
@@ -79,6 +88,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
 
   app.get('/api/projects', (_req, res) => {
     try {
+      const scopedProjectId = repaveScopedProjectId(_req);
       const latestRunStatuses = listLatestProjectRunStatuses(db);
       const awaitingInputProjects = listProjectsAwaitingInput(db);
       const activeRunStatuses = new Map();
@@ -99,15 +109,17 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       /** @type {import('@open-design/contracts').ProjectsResponse} */
       const body = {
-        projects: listProjects(db).map((project: any) => ({
-          ...project,
-          status: composeProjectDisplayStatus(
-            activeRunStatuses.get(project.id) ??
-              latestRunStatuses.get(project.id) ?? { value: 'not_started' },
-            awaitingInputProjects,
-            project.id,
-          ),
-        })),
+        projects: listProjects(db)
+          .filter((project: any) => !scopedProjectId || project.id === scopedProjectId)
+          .map((project: any) => ({
+            ...project,
+            status: composeProjectDisplayStatus(
+              activeRunStatuses.get(project.id) ??
+                latestRunStatuses.get(project.id) ?? { value: 'not_started' },
+              awaitingInputProjects,
+              project.id,
+            ),
+          })),
       };
       res.json(body);
     } catch (err: any) {
@@ -125,6 +137,14 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
 
   app.post('/api/projects', async (req, res) => {
     try {
+      if (repaveScopedProjectId(req)) {
+        return sendApiError(
+          res,
+          403,
+          'REPAVE_PROJECT_SCOPE_ACTIVE',
+          'project creation is disabled while a Repave project scope is active',
+        );
+      }
       const { id, name, skillId, designSystemId, pendingPrompt, metadata, customInstructions, skipDiscoveryBrief } =
         req.body || {};
       if (typeof id !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(id)) {

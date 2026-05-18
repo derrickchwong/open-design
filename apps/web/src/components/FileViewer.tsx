@@ -600,6 +600,7 @@ interface Props {
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
   onFileSaved?: () => Promise<void> | void;
+  hideShareActions?: boolean;
 }
 
 export function FileViewer({
@@ -616,6 +617,7 @@ export function FileViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  hideShareActions = false,
 }: Props) {
   const rendererMatch = artifactRendererRegistry.resolve({
     file,
@@ -663,6 +665,7 @@ export function FileViewer({
         onRemovePreviewComment={onRemovePreviewComment}
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
+        hideShareActions={hideShareActions}
       />
     );
   }
@@ -3393,6 +3396,7 @@ function HtmlViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  hideShareActions,
 }: {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -3407,6 +3411,7 @@ function HtmlViewer({
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
   onFileSaved?: () => Promise<void> | void;
+  hideShareActions?: boolean;
 }) {
   const t = useT();
   const analytics = useAnalytics();
@@ -5243,8 +5248,8 @@ function HtmlViewer({
     }
   }
 
-  const showPresent = source !== null;
-  const canShare = source !== null;
+  const showPresent = source !== null && !hideShareActions;
+  const canShare = source !== null && !hideShareActions;
   const exportTitle = file.name.replace(/\.html?$/i, '') || file.name;
   const canPptx = canShare && Boolean(onExportAsPptx) && !streaming;
   const visibleSideComments = useMemo(

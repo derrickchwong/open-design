@@ -55,6 +55,7 @@ import {
   createProject,
   createPluginShareProject,
   deleteProject as deleteProjectApi,
+  getProject,
   importClaudeDesignZip,
   importFolderProject,
   listProjects,
@@ -274,8 +275,9 @@ export function App() {
   // {active:false} if this hasn't run.
   const activeProjectId = route.kind === 'project' ? route.projectId : null;
   const activeFileName = route.kind === 'project' ? route.fileName : null;
+  const embeddedMode = route.kind === 'project' && route.embedded === true;
   const showPrivacyConsent =
-    daemonConfigLoaded && config.privacyDecisionAt == null && !settingsOpen;
+    !embeddedMode && daemonConfigLoaded && config.privacyDecisionAt == null && !settingsOpen;
   useEffect(() => {
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
@@ -432,7 +434,7 @@ export function App() {
           // and let them re-open Settings explicitly via the env pill. Hold
           // the welcome modal until the privacy decision is resolved; the
           // installation id can rotate later without re-opening the banner.
-          if (!next.onboardingCompleted && next.privacyDecisionAt != null) {
+          if (!embeddedMode && !next.onboardingCompleted && next.privacyDecisionAt != null) {
             setSettingsWelcome(true);
             setSettingsOpen(true);
           }
@@ -984,6 +986,15 @@ export function App() {
     if (projects.some((p) => p.id === route.projectId)) return;
     let cancelled = false;
     (async () => {
+      if (route.embedded) {
+        const project = await getProject(route.projectId);
+        if (cancelled) return;
+        if (project) {
+          setProjects((curr) => [project, ...curr.filter((p) => p.id !== project.id)]);
+          return;
+        }
+        return;
+      }
       const list = await listProjects();
       if (cancelled) return;
       setProjects(list);
@@ -997,6 +1008,7 @@ export function App() {
   }, [route, activeProject, projects, daemonLive]);
 
   const openSettings = useCallback((section: SettingsSection = 'execution') => {
+    if (embeddedMode) return;
     if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
       setIntegrationInitialTab(
         section === 'composio'
@@ -1011,7 +1023,7 @@ export function App() {
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsOpen(true);
-  }, []);
+  }, [embeddedMode]);
 
   const openPetSettings = useCallback(() => {
     setSettingsWelcome(false);
@@ -1176,7 +1188,14 @@ export function App() {
         onTouchProject={handleTouchProject}
         onProjectChange={handleProjectChange}
         onProjectsRefresh={refreshProjects}
+        embeddedMode={embeddedMode}
       />
+    );
+  } else if (embeddedMode) {
+    appMain = (
+      <div className="repave-embedded-empty" role="status">
+        {projectsLoading || daemonLive ? 'Loading design workspace…' : 'Design workspace unavailable.'}
+      </div>
     );
   } else {
     appMain = (
@@ -1222,21 +1241,26 @@ export function App() {
   return (
     <>
       <div
-        className={`workspace-shell workspace-shell--${clientType}`}
+        className={`workspace-shell workspace-shell--${clientType}${embeddedMode ? ' workspace-shell--repave-embedded' : ''}`}
         data-client-type={clientType}
+        data-repave-embedded={embeddedMode ? 'true' : undefined}
       >
-        <WorkspaceTabsBar
-          route={route}
-          projects={projects}
-        />
+        {embeddedMode ? null : (
+          <WorkspaceTabsBar
+            route={route}
+            projects={projects}
+          />
+        )}
         <div className="workspace-shell__body">{appMain}</div>
       </div>
-      <PetOverlay
-        pet={config.pet?.enabled ? config.pet : undefined}
-        onTuck={handleTuckPet}
-        onOpenSettings={openPetSettings}
-      />
-      {settingsOpen ? (
+      {embeddedMode ? null : (
+        <PetOverlay
+          pet={config.pet?.enabled ? config.pet : undefined}
+          onTuck={handleTuckPet}
+          onOpenSettings={openPetSettings}
+        />
+      )}
+      {!embeddedMode && settingsOpen ? (
         <SettingsDialog
           initial={config}
           agents={agents}
@@ -1269,7 +1293,7 @@ export function App() {
           onReloadMediaProviders={reloadMediaProvidersFromDaemon}
         />
       ) : null}
-      <MemoryToast onOpenMemory={() => openSettings('memory')} />
+      {embeddedMode ? null : <MemoryToast onOpenMemory={() => openSettings('memory')} />}
       {/* First-run privacy consent banner. It waits for daemon config
           hydration because privacyDecisionAt is daemon-owned and stripped
           from localStorage. It also yields while Settings is open so the

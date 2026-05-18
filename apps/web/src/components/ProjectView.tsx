@@ -171,6 +171,7 @@ interface Props {
   onTouchProject: () => void;
   onProjectChange: (next: Project) => void;
   onProjectsRefresh: () => void;
+  embeddedMode?: boolean;
 }
 
 let liveArtifactEventSequence = 0;
@@ -345,6 +346,7 @@ export function ProjectView({
   onTouchProject,
   onProjectChange,
   onProjectsRefresh,
+  embeddedMode = false,
 }: Props) {
   const t = useT();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -2846,9 +2848,9 @@ export function ProjectView({
       />
       <AppChromeHeader
         showTrafficSpace={false}
-        onBack={onBack}
+        onBack={embeddedMode ? undefined : onBack}
         backLabel={t('project.backToProjects')}
-        actions={(
+        actions={embeddedMode ? null : (
           <AvatarMenu
             config={config}
             agents={agents}
@@ -2870,9 +2872,14 @@ export function ProjectView({
               tabIndex={0}
               role="textbox"
               suppressContentEditableWarning
-              contentEditable
+              contentEditable={!embeddedMode}
+              aria-readonly={embeddedMode ? true : undefined}
               onBlur={(e) => handleProjectRename(e.currentTarget.textContent ?? '')}
               onKeyDown={(e) => {
+                if (embeddedMode) {
+                  e.preventDefault();
+                  return;
+                }
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   (e.currentTarget as HTMLElement).blur();
@@ -2882,7 +2889,7 @@ export function ProjectView({
               {project.name}
             </span>
             <span className="meta" data-testid="project-meta">{projectMeta}</span>
-            {(project.customInstructions ?? '').trim() ? (
+            {!embeddedMode && (project.customInstructions ?? '').trim() ? (
               <button
                 type="button"
                 className={`project-instructions-chip${instructionsMode !== 'closed' ? ' is-open' : ''}`}
@@ -2894,7 +2901,7 @@ export function ProjectView({
                 <Icon name="file" size={11} />
                 <span>{t('project.customInstructions')}</span>
               </button>
-            ) : (
+            ) : !embeddedMode ? (
               <button
                 type="button"
                 className="project-instructions-toggle"
@@ -2908,7 +2915,7 @@ export function ProjectView({
               >
                 <Icon name="edit" size={13} />
               </button>
-            )}
+            ) : null}
           </span>
         </div>
       </AppChromeHeader>
@@ -3028,12 +3035,12 @@ export function ProjectView({
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={handleRenameConversation}
-              onOpenSettings={onOpenSettings}
-              onOpenMcpSettings={onOpenMcpSettings}
-              petConfig={config.pet}
-              onAdoptPet={onAdoptPetInline}
-              onTogglePet={onTogglePet}
-              onOpenPetSettings={onOpenPetSettings}
+              onOpenSettings={embeddedMode ? undefined : onOpenSettings}
+              onOpenMcpSettings={embeddedMode ? undefined : onOpenMcpSettings}
+              petConfig={embeddedMode ? undefined : config.pet}
+              onAdoptPet={embeddedMode ? undefined : onAdoptPetInline}
+              onTogglePet={embeddedMode ? undefined : onTogglePet}
+              onOpenPetSettings={embeddedMode ? undefined : onOpenPetSettings}
               researchAvailable={config.mode === 'daemon'}
               projectMetadata={project.metadata}
               onProjectMetadataChange={(metadata) => {
@@ -3068,7 +3075,7 @@ export function ProjectView({
             onBlur={handleChatResizeBlur}
           />
         ) : null}
-        <FileWorkspace
+            <FileWorkspace
           projectId={project.id}
           projectKind={projectKindToTracking(project.metadata?.kind) ?? 'prototype'}
           files={projectFiles}
@@ -3090,8 +3097,9 @@ export function ProjectView({
           onSendBoardCommentAttachments={handleSendBoardCommentAttachments}
           onPluginFolderAgentAction={handlePluginFolderAgentAction}
           focusMode={workspaceFocused}
-          onFocusModeChange={setWorkspaceFocused}
-        />
+              onFocusModeChange={setWorkspaceFocused}
+              embeddedMode={embeddedMode}
+            />
       </div>
       {projectActionsToast ? (
         <Toast

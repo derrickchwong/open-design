@@ -22,6 +22,7 @@ export type Route =
   | {
       kind: 'project';
       projectId: string;
+      embedded?: boolean;
       /**
        * Deep-link to a specific conversation inside the project. When
        * present, the project view picks this conversation as the active
@@ -67,6 +68,32 @@ export function parseRoute(pathname: string): Route {
     }
     return { kind: 'home', view: 'projects' };
   }
+  if (parts[0] === 'repave' && parts[1] === 'projects' && parts[2]) {
+    const projectId = decodeURIComponent(parts[2]);
+    if (parts[3] === 'conversations' && parts[4]) {
+      const conversationId = decodeURIComponent(parts[4]);
+      if (parts[5] === 'files' && parts[6]) {
+        return {
+          kind: 'project',
+          projectId,
+          embedded: true,
+          conversationId,
+          fileName: decodeURIComponent(parts.slice(6).join('/')),
+        };
+      }
+      return { kind: 'project', projectId, embedded: true, conversationId, fileName: null };
+    }
+    if (parts[3] === 'files' && parts[4]) {
+      return {
+        kind: 'project',
+        projectId,
+        embedded: true,
+        conversationId: null,
+        fileName: decodeURIComponent(parts.slice(4).join('/')),
+      };
+    }
+    return { kind: 'project', projectId, embedded: true, conversationId: null, fileName: null };
+  }
   if (parts[0] === 'design-systems') {
     return { kind: 'home', view: 'design-systems' };
   }
@@ -105,16 +132,17 @@ export function buildPath(route: Route): string {
   if (route.kind === 'marketplace') return '/marketplace';
   if (route.kind === 'marketplace-detail') return `/marketplace/${encodeURIComponent(route.pluginId)}`;
   const id = encodeURIComponent(route.projectId);
+  const prefix = route.embedded ? `/repave/projects/${id}` : `/projects/${id}`;
   const file = route.fileName
     ? route.fileName.split('/').map((s) => encodeURIComponent(s)).join('/')
     : null;
   if (route.conversationId) {
     const cid = encodeURIComponent(route.conversationId);
     return file
-      ? `/projects/${id}/conversations/${cid}/files/${file}`
-      : `/projects/${id}/conversations/${cid}`;
+      ? `${prefix}/conversations/${cid}/files/${file}`
+      : `${prefix}/conversations/${cid}`;
   }
-  return file ? `/projects/${id}/files/${file}` : `/projects/${id}`;
+  return file ? `${prefix}/files/${file}` : prefix;
 }
 
 // Centralized navigation. Components call this instead of mutating

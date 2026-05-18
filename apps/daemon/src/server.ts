@@ -2536,6 +2536,88 @@ export async function startServer({
     });
   }
 
+  // Repave/App Rewrite embedded mode. A fronting App Rewrite route can inject
+  // x-repave-od-project-id on every OD API request; when present, the daemon
+  // refuses project-specific traffic for any other OD project. Set
+  // OD_REPAVE_EMBEDDED_SCOPE=1 to require the header for project/run/chat APIs.
+  const repaveScopeRequired = process.env.OD_REPAVE_EMBEDDED_SCOPE === '1';
+  const scopedProjectFromReq = (req) => {
+    const raw = String(
+      req.get('x-repave-od-project-id') ??
+      req.get('x-od-project-scope') ??
+      '',
+    ).trim();
+    return /^[A-Za-z0-9._-]{1,128}$/.test(raw) ? raw : null;
+  };
+  app.use('/api', (req, res, next) => {
+    const scopedProjectId = scopedProjectFromReq(req);
+    const pathOnly = req.path;
+    const scopeRelevant =
+      pathOnly === '/projects' ||
+      pathOnly.startsWith('/projects/') ||
+      pathOnly === '/runs' ||
+      pathOnly.startsWith('/runs/') ||
+      pathOnly === '/chat' ||
+      pathOnly === '/active' ||
+      pathOnly.startsWith('/import/');
+
+    if (!scopedProjectId) {
+      if (repaveScopeRequired && scopeRelevant) {
+        return res.status(403).json({
+          error: {
+            code: 'REPAVE_PROJECT_SCOPE_REQUIRED',
+            message: 'x-repave-od-project-id is required for embedded Repave access',
+          },
+        });
+      }
+      return next();
+    }
+
+    if (pathOnly.startsWith('/import/')) {
+      return res.status(403).json({
+        error: {
+          code: 'REPAVE_PROJECT_SCOPE_ACTIVE',
+          message: 'imports are disabled while a Repave project scope is active',
+        },
+      });
+    }
+
+    if (pathOnly === '/projects' && req.method !== 'GET' && req.method !== 'HEAD') {
+      return res.status(403).json({
+        error: {
+          code: 'REPAVE_PROJECT_SCOPE_ACTIVE',
+          message: 'project collection mutation is disabled while a Repave project scope is active',
+        },
+      });
+    }
+
+    const projectPathMatch = /^\/projects\/([^/]+)/.exec(pathOnly);
+    if (projectPathMatch && decodeURIComponent(projectPathMatch[1]) !== scopedProjectId) {
+      return res.status(403).json({
+        error: {
+          code: 'REPAVE_PROJECT_SCOPE_MISMATCH',
+          message: 'requested project is outside the active Repave project scope',
+        },
+      });
+    }
+
+    const bodyProjectId = typeof req.body?.projectId === 'string' ? req.body.projectId : null;
+    if (
+      (pathOnly === '/runs' || pathOnly === '/chat' || pathOnly === '/active') &&
+      bodyProjectId &&
+      bodyProjectId !== scopedProjectId
+    ) {
+      return res.status(403).json({
+        error: {
+          code: 'REPAVE_PROJECT_SCOPE_MISMATCH',
+          message: 'request body projectId is outside the active Repave project scope',
+        },
+      });
+    }
+
+    return next();
+  });
+
   // Multi-directory scanning shared by every skill / template surface. The
   // helpers delegate to listSkills(roots) which walks roots in priority
   // order, tags each entry with the SkillSource ('user' for the user

@@ -68,6 +68,7 @@ interface Props {
   ) => Promise<void> | void;
   focusMode?: boolean;
   onFocusModeChange?: (next: boolean) => void;
+  embeddedMode?: boolean;
 }
 
 interface SketchState {
@@ -105,6 +106,7 @@ export function FileWorkspace({
   onPluginFolderAgentAction,
   focusMode = false,
   onFocusModeChange,
+  embeddedMode = false,
 }: Props) {
   const t = useT();
   // Persisted tabs come from the parent. Active tab can transiently point
@@ -807,6 +809,7 @@ export function FileWorkspace({
             onRemovePreviewComment={onRemovePreviewComment}
             onSendBoardCommentAttachments={onSendBoardCommentAttachments}
             onFileSaved={onRefreshFiles}
+            hideShareActions={embeddedMode}
           />
         ) : (
           <div className="viewer-empty">
