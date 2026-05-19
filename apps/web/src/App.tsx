@@ -82,6 +82,12 @@ import type {
   SkillSummary,
 } from './types';
 
+function initialRepaveEmbeddedProjectId(): string | null {
+  const parts = window.location.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+  if (parts[0] !== 'repave' || parts[1] !== 'projects' || !parts[2]) return null;
+  return decodeURIComponent(parts[2]);
+}
+
 export function shouldSyncMediaProvidersOnSave(
   mediaProviders: AppConfig['mediaProviders'],
   options?: { force?: boolean },
@@ -219,6 +225,7 @@ export function App() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  const repaveEmbeddedProjectId = useMemo(() => initialRepaveEmbeddedProjectId(), []);
   const analytics = useAnalytics();
 
   // app_launch — fired exactly once per page load. Mounting in App, not the
@@ -275,9 +282,30 @@ export function App() {
   // {active:false} if this hasn't run.
   const activeProjectId = route.kind === 'project' ? route.projectId : null;
   const activeFileName = route.kind === 'project' ? route.fileName : null;
-  const embeddedMode = route.kind === 'project' && route.embedded === true;
+  const embeddedMode =
+    route.kind === 'project' &&
+    (route.embedded === true || route.projectId === repaveEmbeddedProjectId);
   const showPrivacyConsent =
     !embeddedMode && daemonConfigLoaded && config.privacyDecisionAt == null && !settingsOpen;
+  useEffect(() => {
+    if (!repaveEmbeddedProjectId) return;
+    if (
+      route.kind === 'project' &&
+      route.projectId === repaveEmbeddedProjectId &&
+      route.embedded === true
+    ) {
+      return;
+    }
+    const preserveCurrentProjectState =
+      route.kind === 'project' && route.projectId === repaveEmbeddedProjectId;
+    navigate({
+      kind: 'project',
+      projectId: repaveEmbeddedProjectId,
+      embedded: true,
+      conversationId: preserveCurrentProjectState ? route.conversationId ?? null : null,
+      fileName: preserveCurrentProjectState ? route.fileName : null,
+    }, { replace: true });
+  }, [repaveEmbeddedProjectId, route]);
   useEffect(() => {
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }

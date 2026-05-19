@@ -97,7 +97,7 @@ import {
   mergeAttachedComments,
   removeAttachedComment,
 } from '../comments';
-import { AppChromeHeader } from './AppChromeHeader';
+import { APP_CHROME_FILE_ACTIONS_ID, AppChromeHeader } from './AppChromeHeader';
 import { AvatarMenu } from './AvatarMenu';
 import { ChatPane } from './ChatPane';
 import {
@@ -2846,79 +2846,78 @@ export function ProjectView({
         projectId={project.id}
         enabled={critiqueTheaterEnabled}
       />
-      <AppChromeHeader
-        showTrafficSpace={false}
-        onBack={embeddedMode ? undefined : onBack}
-        backLabel={t('project.backToProjects')}
-        actions={embeddedMode ? null : (
-          <AvatarMenu
-            config={config}
-            agents={agents}
-            daemonLive={daemonLive}
-            onModeChange={onModeChange}
-            onAgentChange={onAgentChange}
-            onAgentModelChange={onAgentModelChange}
-            onOpenSettings={onOpenSettings}
-            onRefreshAgents={onRefreshAgents}
-            onBack={onBack}
-          />
-        )}
-      >
-        <div className="app-project-title">
-          <span className="app-project-title-line">
-            <span
-              className="title editable"
-              data-testid="project-title"
-              tabIndex={0}
-              role="textbox"
-              suppressContentEditableWarning
-              contentEditable={!embeddedMode}
-              aria-readonly={embeddedMode ? true : undefined}
-              onBlur={(e) => handleProjectRename(e.currentTarget.textContent ?? '')}
-              onKeyDown={(e) => {
-                if (embeddedMode) {
-                  e.preventDefault();
-                  return;
-                }
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              }}
-            >
-              {project.name}
-            </span>
-            <span className="meta" data-testid="project-meta">{projectMeta}</span>
-            {!embeddedMode && (project.customInstructions ?? '').trim() ? (
-              <button
-                type="button"
-                className={`project-instructions-chip${instructionsMode !== 'closed' ? ' is-open' : ''}`}
-                data-testid="project-instructions-chip"
-                title={t('project.customInstructions')}
-                aria-expanded={instructionsMode !== 'closed'}
-                onClick={() => setInstructionsMode((m) => (m === 'closed' ? 'review' : 'closed'))}
-              >
-                <Icon name="file" size={11} />
-                <span>{t('project.customInstructions')}</span>
-              </button>
-            ) : !embeddedMode ? (
-              <button
-                type="button"
-                className="project-instructions-toggle"
-                data-testid="project-instructions-add"
-                title={t('project.customInstructions')}
-                aria-expanded={instructionsMode !== 'closed'}
-                onClick={() => {
-                  setInstructionsDraft('');
-                  setInstructionsMode((m) => (m === 'closed' ? 'edit' : 'closed'));
+      {embeddedMode ? (
+        <div id={APP_CHROME_FILE_ACTIONS_ID} hidden />
+      ) : (
+        <AppChromeHeader
+          showTrafficSpace={false}
+          onBack={onBack}
+          backLabel={t('project.backToProjects')}
+          actions={(
+            <AvatarMenu
+              config={config}
+              agents={agents}
+              daemonLive={daemonLive}
+              onModeChange={onModeChange}
+              onAgentChange={onAgentChange}
+              onAgentModelChange={onAgentModelChange}
+              onOpenSettings={onOpenSettings}
+              onRefreshAgents={onRefreshAgents}
+              onBack={onBack}
+            />
+          )}
+        >
+          <div className="app-project-title">
+            <span className="app-project-title-line">
+              <span
+                className="title editable"
+                data-testid="project-title"
+                tabIndex={0}
+                role="textbox"
+                suppressContentEditableWarning
+                contentEditable
+                onBlur={(e) => handleProjectRename(e.currentTarget.textContent ?? '')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLElement).blur();
+                  }
                 }}
               >
-                <Icon name="edit" size={13} />
-              </button>
-            ) : null}
-          </span>
-        </div>
-      </AppChromeHeader>
+                {project.name}
+              </span>
+              <span className="meta" data-testid="project-meta">{projectMeta}</span>
+              {(project.customInstructions ?? '').trim() ? (
+                <button
+                  type="button"
+                  className={`project-instructions-chip${instructionsMode !== 'closed' ? ' is-open' : ''}`}
+                  data-testid="project-instructions-chip"
+                  title={t('project.customInstructions')}
+                  aria-expanded={instructionsMode !== 'closed'}
+                  onClick={() => setInstructionsMode((m) => (m === 'closed' ? 'review' : 'closed'))}
+                >
+                  <Icon name="file" size={11} />
+                  <span>{t('project.customInstructions')}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="project-instructions-toggle"
+                  data-testid="project-instructions-add"
+                  title={t('project.customInstructions')}
+                  aria-expanded={instructionsMode !== 'closed'}
+                  onClick={() => {
+                    setInstructionsDraft('');
+                    setInstructionsMode((m) => (m === 'closed' ? 'edit' : 'closed'));
+                  }}
+                >
+                  <Icon name="edit" size={13} />
+                </button>
+              )}
+            </span>
+          </div>
+        </AppChromeHeader>
+      )}
       {instructionsMode === 'review' && (
         <div className="project-instructions-bar project-instructions-review">
           <div className="project-instructions-bar-head">
@@ -3052,6 +3051,7 @@ export function ProjectView({
               }}
               activePluginSnapshot={activePluginSnapshot}
               onCollapse={() => setWorkspaceFocused(true)}
+              embeddedMode={embeddedMode}
             />
           ) : (
             <div className="pane" data-testid="chat-pane-loading">

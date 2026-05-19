@@ -178,10 +178,36 @@ const AUDIO_STARTERS: StarterPrompt[] = [
   },
 ];
 
+const REPAVE_EMBEDDED_STARTERS: StarterPrompt[] = [
+  {
+    icon: '▦',
+    title: 'Modernize current screen',
+    tag: 'Repave',
+    prompt:
+      'Modernize the currently selected UI prototype for this App Rewrite project. Keep the existing user flow and functional requirements intact, but improve layout, spacing, typography, form affordances, validation states, and responsive behavior. Make focused edits to the existing files instead of creating unrelated new pages.',
+  },
+  {
+    icon: '◈',
+    title: 'Design full app flow',
+    tag: 'UX',
+    prompt:
+      'Create a cohesive modern UI direction for the generated app flow in this workspace. First read `README.md` and `features.json`; the raw BDD feature files are in `features/`. Read `DESIGN.md` if present. Use those scenarios and the existing prototype files as context. Align screens around a consistent navigation model, visual hierarchy, component style, empty/error/loading states, and desktop/mobile responsiveness.',
+  },
+  {
+    icon: '▤',
+    title: 'Polish BDD states',
+    tag: 'States',
+    prompt:
+      'Review the prototype screens and polish the states implied by the BDD scenarios: default, success, validation errors, empty data, disabled/loading controls, and edge cases. Keep the app behavior recognizable while making each state production-quality and easy to test.',
+  },
+];
+
 function pickStarters(
   metadata: ProjectMetadata | undefined,
   t: TranslateFn,
+  embeddedMode = false,
 ): StarterPrompt[] {
+  if (embeddedMode) return REPAVE_EMBEDDED_STARTERS;
   const kind = metadata?.kind;
   if (kind === 'image') return IMAGE_STARTERS;
   if (kind === 'video') {
@@ -274,6 +300,7 @@ interface Props {
   // message" without forcing a separate side widget.
   activePluginSnapshot?: AppliedPluginSnapshot | null;
   onCollapse?: () => void;
+  embeddedMode?: boolean;
 }
 
 type Tab = 'chat' | 'comments';
@@ -322,6 +349,7 @@ export function ChatPane({
   activePluginSnapshot,
   skills = [],
   onCollapse,
+  embeddedMode = false,
 }: Props) {
   const t = useT();
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -737,7 +765,7 @@ export function ChatPane({
                     </span>
                   </div>
                   <div className="chat-examples" role="list">
-                    {pickStarters(projectMetadata, t).map((ex, i) => (
+                    {pickStarters(projectMetadata, t, embeddedMode).map((ex, i) => (
                       <button
                         key={`${ex.title}-${i}`}
                         type="button"
