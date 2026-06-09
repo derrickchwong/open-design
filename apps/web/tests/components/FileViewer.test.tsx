@@ -1663,7 +1663,7 @@ describe('FileViewer tweaks toolbar', () => {
     });
   }
 
-  it('renders Annotation, Edit, and Draw as the primary preview tools', async () => {
+  it('renders Component, Circle, Edit, and Mark as the primary preview tools', async () => {
     render(
       <FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()}
         liveHtml='<html><body><main data-od-id="hero">Hero</main></body></html>'
@@ -1673,6 +1673,9 @@ describe('FileViewer tweaks toolbar', () => {
     expect(screen.queryByTestId('palette-tweaks-toggle')).toBeNull();
     expect(screen.queryByTestId('inspect-mode-toggle')).toBeNull();
     expect(screen.getByTestId('board-mode-toggle')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Component' })).toBeTruthy();
+    expect(screen.getByTestId('pod-mode-toggle')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Circle' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'More annotation tools' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'Pick element' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'Region' })).toBeNull();

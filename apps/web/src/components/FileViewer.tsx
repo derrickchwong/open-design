@@ -6674,15 +6674,27 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
                   type="button"
                   className={`viewer-action viewer-action-icon viewer-comment-toggle${boardMode && !commentCreateMode && boardTool === 'inspect' ? ' active' : ''}`}
                   data-testid="board-mode-toggle"
-                  data-tooltip={t('fileViewer.comment')}
-                  title={t('fileViewer.comment')}
-                  aria-label={t('fileViewer.comment')}
+                  data-tooltip="Component"
+                  title="Component"
+                  aria-label="Component"
                   aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
                   onClick={activateCommentTool}
                 >
-                  <RemixIcon name="chat-new-line" size={15} />
+                  <RemixIcon name="cursor-line" size={15} />
                 </button>
               </div>
+              <button
+                className={`viewer-action viewer-action-icon${boardMode && !commentCreateMode && boardTool === 'pod' ? ' active' : ''}`}
+                type="button"
+                data-testid="pod-mode-toggle"
+                data-tooltip="Circle"
+                title="Circle"
+                aria-label="Circle"
+                aria-pressed={boardMode && !commentCreateMode && boardTool === 'pod'}
+                onClick={() => activateBoardPicker('pod')}
+              >
+                <RemixIcon name="focus-3-line" size={15} />
+              </button>
               <button
                 className={`viewer-action viewer-action-icon${drawOverlayOpen ? ' active' : ''}`}
                 type="button"
@@ -6767,13 +6779,25 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
                 type="button"
                 className={`viewer-action viewer-comment-toggle${boardMode && !commentCreateMode && boardTool === 'inspect' ? ' active' : ''}`}
                 data-testid="board-mode-toggle"
-                title={t('fileViewer.comment')}
-                aria-label={t('fileViewer.comment')}
+                title="Component"
+                aria-label="Component"
                 aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
                 onClick={activateCommentTool}
               >
-                <RemixIcon name="chat-new-line" size={14} />
-                <span>{t('fileViewer.comment')}</span>
+                <RemixIcon name="cursor-line" size={14} />
+                <span>Component</span>
+              </button>
+              <button
+                type="button"
+                className={`viewer-action viewer-comment-toggle${boardMode && !commentCreateMode && boardTool === 'pod' ? ' active' : ''}`}
+                data-testid="pod-mode-toggle"
+                title="Circle"
+                aria-label="Circle"
+                aria-pressed={boardMode && !commentCreateMode && boardTool === 'pod'}
+                onClick={() => activateBoardPicker('pod')}
+              >
+                <RemixIcon name="focus-3-line" size={14} />
+                <span>Circle</span>
               </button>
               <button
                 type="button"
