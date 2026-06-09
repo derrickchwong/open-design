@@ -5,6 +5,8 @@
 
 import { useSyncExternalStore } from 'react';
 
+const REPAVE_EMBEDDED_PROJECT_KEY = 'open-design:repave-embedded-project-id';
+
 // Entry-shell sub-views. The home/project landing renders one of three
 // columns and each sub-view now owns a top-level path so the browser
 // back/forward buttons work, deep links are shareable, and per-tab
@@ -25,6 +27,7 @@ export type Route =
   | {
       kind: 'project';
       projectId: string;
+      embedded?: boolean;
       /**
        * Deep-link to a specific conversation inside the project. When
        * present, the project view picks this conversation as the active
@@ -38,6 +41,27 @@ export type Route =
   | { kind: 'marketplace' }
   | { kind: 'marketplace-detail'; pluginId: string };
 
+function repaveEmbeddedProjectId(): string | null {
+  try {
+    return window.sessionStorage.getItem(REPAVE_EMBEDDED_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setRepaveEmbeddedProjectId(projectId: string): void {
+  try {
+    window.sessionStorage.setItem(REPAVE_EMBEDDED_PROJECT_KEY, projectId);
+  } catch {
+    // Embedded mode still works from the current URL; this only preserves it
+    // across normal in-app navigation calls that omit the embedded flag.
+  }
+}
+
+function isRepaveEmbeddedProject(projectId: string): boolean {
+  return repaveEmbeddedProjectId() === projectId;
+}
+
 export function parseRoute(pathname: string): Route {
   const parts = pathname.replace(/\/+$/, '').split('/').filter(Boolean);
   if (parts.length === 0) return { kind: 'home', view: 'home' };
@@ -47,6 +71,7 @@ export function parseRoute(pathname: string): Route {
   if (parts[0] === 'projects') {
     if (parts[1]) {
       const projectId = decodeURIComponent(parts[1]);
+      const embedded = isRepaveEmbeddedProject(projectId) ? true : undefined;
       // /projects/:id/conversations/:cid[/files/...]
       if (parts[2] === 'conversations' && parts[3]) {
         const conversationId = decodeURIComponent(parts[3]);
@@ -54,24 +79,53 @@ export function parseRoute(pathname: string): Route {
           return {
             kind: 'project',
             projectId,
+            embedded,
             conversationId,
             fileName: decodeURIComponent(parts.slice(5).join('/')),
           };
         }
-        return { kind: 'project', projectId, conversationId, fileName: null };
+        return { kind: 'project', projectId, embedded, conversationId, fileName: null };
       }
       // /projects/:id/files/...
       if (parts[2] === 'files' && parts[3]) {
         return {
           kind: 'project',
           projectId,
+          embedded,
           conversationId: null,
           fileName: decodeURIComponent(parts.slice(3).join('/')),
         };
       }
-      return { kind: 'project', projectId, conversationId: null, fileName: null };
+      return { kind: 'project', projectId, embedded, conversationId: null, fileName: null };
     }
     return { kind: 'home', view: 'projects' };
+  }
+  if (parts[0] === 'repave' && parts[1] === 'projects' && parts[2]) {
+    const projectId = decodeURIComponent(parts[2]);
+    setRepaveEmbeddedProjectId(projectId);
+    if (parts[3] === 'conversations' && parts[4]) {
+      const conversationId = decodeURIComponent(parts[4]);
+      if (parts[5] === 'files' && parts[6]) {
+        return {
+          kind: 'project',
+          projectId,
+          embedded: true,
+          conversationId,
+          fileName: decodeURIComponent(parts.slice(6).join('/')),
+        };
+      }
+      return { kind: 'project', projectId, embedded: true, conversationId, fileName: null };
+    }
+    if (parts[3] === 'files' && parts[4]) {
+      return {
+        kind: 'project',
+        projectId,
+        embedded: true,
+        conversationId: null,
+        fileName: decodeURIComponent(parts.slice(4).join('/')),
+      };
+    }
+    return { kind: 'project', projectId, embedded: true, conversationId: null, fileName: null };
   }
   if (parts[0] === 'design-systems') {
     if (parts[1] === 'create') {
@@ -122,16 +176,20 @@ export function buildPath(route: Route): string {
     return `/design-systems/${encodeURIComponent(route.designSystemId)}`;
   }
   const id = encodeURIComponent(route.projectId);
+  const prefix =
+    route.embedded || isRepaveEmbeddedProject(route.projectId)
+      ? `/repave/projects/${id}`
+      : `/projects/${id}`;
   const file = route.fileName
     ? route.fileName.split('/').map((s) => encodeURIComponent(s)).join('/')
     : null;
   if (route.conversationId) {
     const cid = encodeURIComponent(route.conversationId);
     return file
-      ? `/projects/${id}/conversations/${cid}/files/${file}`
-      : `/projects/${id}/conversations/${cid}`;
+      ? `${prefix}/conversations/${cid}/files/${file}`
+      : `${prefix}/conversations/${cid}`;
   }
-  return file ? `/projects/${id}/files/${file}` : `/projects/${id}`;
+  return file ? `${prefix}/files/${file}` : prefix;
 }
 
 // Centralized navigation. Components call this instead of mutating

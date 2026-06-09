@@ -29,6 +29,42 @@
   background: var(--bg-app);
   overflow: hidden;
 }
+.workspace-shell--repave-embedded {
+  grid-template-rows: minmax(0, 1fr);
+  --bg: #f2f4ee;
+  --bg-app: #f2f4ee;
+  --bg-panel: #ffffff;
+  --bg-subtle: #e9ece3;
+  --bg-muted: #dfe4d8;
+  --bg-elevated: #ffffff;
+  --border: #dfe5d9;
+  --border-strong: #cbd5c6;
+  --border-soft: #edf0e8;
+  --text: #1c3b33;
+  --text-strong: #18352e;
+  --text-muted: #63746d;
+  --text-soft: #7d8b85;
+  --text-faint: #9ca7a2;
+  --accent: #1c3b33;
+  --accent-strong: #18352e;
+  --accent-soft: #d7e7df;
+  --accent-tint: #e6f0eb;
+  --accent-hover: #25483f;
+  --green: #4fa78d;
+  --green-bg: #e5f3ee;
+  --green-border: #c7e4d9;
+  --amber: #bb8d34;
+  --amber-bg: #f7efd9;
+  --red: #be6759;
+  --red-bg: #f7e6e1;
+  --red-border: #ecc7bf;
+  --selected: #4fa78d;
+  --selected-soft: rgba(79, 167, 141, 0.18);
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  font-family: "IBM Plex Sans", var(--sans);
+}
 .workspace-shell__body {
   min-width: 0;
   min-height: 0;
@@ -38,6 +74,53 @@
 .workspace-shell__body > .entry-shell {
   height: 100%;
   min-height: 0;
+}
+
+.workspace-shell--repave-embedded .app {
+  background: var(--bg-app);
+}
+
+.workspace-shell--repave-embedded .app-chrome-header {
+  min-height: 42px;
+  background: color-mix(in srgb, var(--bg-panel) 94%, var(--bg-subtle));
+  border-bottom-color: color-mix(in srgb, var(--border) 78%, transparent);
+  box-shadow: none;
+}
+
+.workspace-shell--repave-embedded .app-project-title .title {
+  font-family: "IBM Plex Sans", var(--sans);
+  color: var(--text-strong);
+  letter-spacing: 0;
+}
+
+.workspace-shell--repave-embedded .app-project-title .meta,
+.workspace-shell--repave-embedded .chat-subtle,
+.workspace-shell--repave-embedded .muted {
+  color: var(--text-muted);
+}
+
+.workspace-shell--repave-embedded button.primary,
+.workspace-shell--repave-embedded .btn-primary,
+.workspace-shell--repave-embedded .chrome-action-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.workspace-shell--repave-embedded button.primary:hover:not(:disabled),
+.workspace-shell--repave-embedded .btn-primary:hover:not(:disabled),
+.workspace-shell--repave-embedded .chrome-action-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.repave-embedded-empty {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-app);
+  color: var(--text-muted);
+  font: 500 13px/1.4 "IBM Plex Sans", var(--sans);
 }
 
 .iframe-keep-alive-pool {

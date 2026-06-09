@@ -110,6 +110,7 @@ interface Props {
   githubConnected?: boolean;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
+  embeddedMode?: boolean;
 }
 
 interface SketchState {
@@ -230,6 +231,7 @@ export function FileWorkspace({
   githubConnected,
   commentPortalId,
   onCommentModeChange,
+  embeddedMode = false,
 }: Props) {
   const t = useT();
   const analytics = useAnalytics();
@@ -1077,6 +1079,7 @@ export function FileWorkspace({
             onOpenFileReplacing={openFileReplacing}
             commentPortalId={commentPortalId}
             onCommentModeChange={onCommentModeChange}
+            hideShareActions={embeddedMode}
           />
         ) : (
           <div className="viewer-empty">

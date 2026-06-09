@@ -702,6 +702,7 @@ interface Props {
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
+  hideShareActions?: boolean;
 }
 
 export function FileViewer({
@@ -723,6 +724,7 @@ export function FileViewer({
   onOpenFileReplacing,
   commentPortalId,
   onCommentModeChange,
+  hideShareActions = false,
 }: Props) {
   const rendererMatch = artifactRendererRegistry.resolve({
     file,
@@ -764,6 +766,7 @@ export function FileViewer({
         onFileSaved={onFileSaved}
         commentPortalId={commentPortalId}
         onCommentModeChange={onCommentModeChange}
+        hideShareActions={hideShareActions}
       />
     );
   }
@@ -3869,6 +3872,7 @@ function HtmlViewer({
   onFileSaved,
   commentPortalId,
   onCommentModeChange,
+  hideShareActions,
 }: {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -3887,6 +3891,7 @@ function HtmlViewer({
   onFileSaved?: () => Promise<void> | void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
+  hideShareActions?: boolean;
 }) {
   const t = useT();
   const analytics = useAnalytics();
@@ -6268,8 +6273,8 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
     }
   }
 
-  const showPresent = source !== null;
-  const canShare = source !== null;
+  const showPresent = source !== null && !hideShareActions;
+  const canShare = source !== null && !hideShareActions;
   const exportTitle = file.name.replace(/\.html?$/i, '') || file.name;
   const canPptx = canShare && Boolean(onExportAsPptx) && !streaming;
   useEffect(() => {

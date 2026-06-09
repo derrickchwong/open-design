@@ -107,6 +107,12 @@ import type {
   SkillSummary,
 } from './types';
 
+function initialRepaveEmbeddedProjectId(): string | null {
+  const parts = window.location.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+  if (parts[0] !== 'repave' || parts[1] !== 'projects' || !parts[2]) return null;
+  return decodeURIComponent(parts[2]);
+}
+
 export function shouldSyncMediaProvidersOnSave(
   mediaProviders: AppConfig['mediaProviders'],
   options?: { force?: boolean },
@@ -292,6 +298,7 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  const repaveEmbeddedProjectId = useMemo(() => initialRepaveEmbeddedProjectId(), []);
   const analytics = useAnalytics();
 
   // v2 schema removed the standalone `app_launch` event; the initial
@@ -389,10 +396,33 @@ function AppInner() {
   // is running. Settings is irrelevant to visibility; the banner sits above
   // the modal-backdrop layer in index.css so opening Settings does not hide
   // it.
+  const embeddedMode =
+    route.kind === 'project' &&
+    (route.embedded === true || route.projectId === repaveEmbeddedProjectId);
   const showPrivacyConsent =
+    !embeddedMode &&
     daemonConfigLoaded &&
     config.privacyDecisionAt == null &&
     config.onboardingCompleted === true;
+  useEffect(() => {
+    if (!repaveEmbeddedProjectId) return;
+    if (
+      route.kind === 'project' &&
+      route.projectId === repaveEmbeddedProjectId &&
+      route.embedded === true
+    ) {
+      return;
+    }
+    const preserveCurrentProjectState =
+      route.kind === 'project' && route.projectId === repaveEmbeddedProjectId;
+    navigate({
+      kind: 'project',
+      projectId: repaveEmbeddedProjectId,
+      embedded: true,
+      conversationId: preserveCurrentProjectState ? route.conversationId ?? null : null,
+      fileName: preserveCurrentProjectState ? route.fileName : null,
+    }, { replace: true });
+  }, [repaveEmbeddedProjectId, route]);
   useEffect(() => {
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
@@ -1308,6 +1338,7 @@ function AppInner() {
     section: SettingsSection = 'execution',
     opts?: { highlight?: SettingsHighlight },
   ) => {
+    if (embeddedMode) return;
     if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
       setIntegrationInitialTab(
         section === 'composio'
@@ -1323,7 +1354,7 @@ function AppInner() {
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
     setSettingsOpen(true);
-  }, []);
+  }, [embeddedMode]);
 
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
@@ -1548,7 +1579,14 @@ function AppInner() {
         onProjectsRefresh={refreshProjects}
         onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
         onDesignSystemsRefresh={refreshDesignSystems}
+        embeddedMode={embeddedMode}
       />
+    );
+  } else if (embeddedMode) {
+    appMain = (
+      <div className="repave-embedded-empty" role="status">
+        {projectsLoading || daemonLive ? 'Loading design workspace...' : 'Design workspace unavailable.'}
+      </div>
     );
   } else {
     appMain = (
@@ -1635,23 +1673,26 @@ function AppInner() {
   return (
     <>
       <div
-        className={`workspace-shell workspace-shell--${clientType}`}
+        className={`workspace-shell workspace-shell--${clientType}${embeddedMode ? ' workspace-shell--repave-embedded' : ''}`}
         data-client-type={clientType}
+        data-repave-embedded={embeddedMode ? 'true' : undefined}
       >
-        <WorkspaceTabsBar
-          route={route}
-          projects={projects}
-        />
+        {embeddedMode ? null : (
+          <WorkspaceTabsBar
+            route={route}
+            projects={projects}
+          />
+        )}
         <div className="workspace-shell__body">{appMain}</div>
       </div>
-      {clientType === 'desktop' ? null : (
+      {clientType === 'desktop' || embeddedMode ? null : (
         <PetOverlay
           pet={config.pet?.enabled ? config.pet : undefined}
           taskCenter={petTaskCenter}
           onOpenProject={handleOpenProject}
         />
       )}
-      {settingsOpen ? (
+      {!embeddedMode && settingsOpen ? (
         <SettingsDialog
           initial={config}
           agents={agents}
@@ -1693,7 +1734,7 @@ function AppInner() {
           onProviderModelsCacheChange={setProviderModelsCache}
         />
       ) : null}
-      <MemoryToast onOpenMemory={() => openSettings('memory')} />
+      {embeddedMode ? null : <MemoryToast onOpenMemory={() => openSettings('memory')} />}
       {/* First-run privacy consent banner. It waits for daemon config
           hydration because privacyDecisionAt is daemon-owned and stripped
           from localStorage. It waits for `onboardingCompleted` so first-run

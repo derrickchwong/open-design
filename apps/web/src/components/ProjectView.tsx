@@ -138,7 +138,7 @@ import {
   removeAttachedComment,
 } from '../comments';
 import { buildPptxExportPrompt } from '../lib/build-pptx-export-prompt';
-import { AppChromeHeader } from './AppChromeHeader';
+import { APP_CHROME_FILE_ACTIONS_ID, AppChromeHeader } from './AppChromeHeader';
 import { AvatarMenu } from './AvatarMenu';
 import { HandoffButton } from './HandoffButton';
 import { ProjectDesignSystemPicker } from './ProjectDesignSystemPicker';
@@ -233,6 +233,7 @@ interface Props {
   onProjectsRefresh: () => void;
   onChangeDefaultDesignSystem?: (designSystemId: string | null) => void;
   onDesignSystemsRefresh?: () => Promise<void> | void;
+  embeddedMode?: boolean;
 }
 
 interface QueuedChatSend {
@@ -516,6 +517,7 @@ export function ProjectView({
   onProjectsRefresh,
   onChangeDefaultDesignSystem,
   onDesignSystemsRefresh,
+  embeddedMode = false,
 }: Props) {
   const { locale, t } = useI18n();
   const analytics = useAnalytics();
@@ -4276,17 +4278,20 @@ export function ProjectView({
         projectId={project.id}
         enabled={critiqueTheaterEnabled}
       />
-      <AppChromeHeader
-        showTrafficSpace={false}
-        onBack={onBack}
-        backLabel={t('project.backToProjects')}
-        fileActionsBefore={(
-          <div
-            className="app-chrome-file-actions-before workspace-tabs-file-actions"
-            data-app-chrome-file-actions="true"
-          />
-        )}
-        actions={(
+      {embeddedMode ? (
+        <div id={APP_CHROME_FILE_ACTIONS_ID} hidden />
+      ) : (
+        <AppChromeHeader
+          showTrafficSpace={false}
+          onBack={onBack}
+          backLabel={t('project.backToProjects')}
+          fileActionsBefore={(
+            <div
+              className="app-chrome-file-actions-before workspace-tabs-file-actions"
+              data-app-chrome-file-actions="true"
+            />
+          )}
+          actions={(
           <>
             <button
               type="button"
@@ -4317,8 +4322,8 @@ export function ProjectView({
               onBack={onBack}
             />
           </>
-        )}
-      >
+          )}
+        >
         <div className="app-project-title">
           <span className="app-project-title-line">
             <span
@@ -4363,7 +4368,8 @@ export function ProjectView({
             ) : null}
           </span>
         </div>
-      </AppChromeHeader>
+        </AppChromeHeader>
+      )}
       {instructionsMode === 'review' && (
         <div className="project-instructions-bar project-instructions-review">
           <div className="project-instructions-bar-head">
@@ -4497,19 +4503,19 @@ export function ProjectView({
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={handleRenameConversation}
-              onOpenSettings={onOpenSettings}
-              onOpenAmrSettings={onOpenAmrSettings}
+              onOpenSettings={embeddedMode ? undefined : onOpenSettings}
+              onOpenAmrSettings={embeddedMode ? undefined : onOpenAmrSettings}
               onSwitchToAmrAndRetry={handleSwitchToAmrAndRetry}
               onLaunchAntigravityOauth={handleLaunchAntigravityOauth}
-              onOpenMcpSettings={onOpenMcpSettings}
+              onOpenMcpSettings={embeddedMode ? undefined : onOpenMcpSettings}
               connectRepoNeeded={connectRepoNeeded}
               githubConnected={githubConnected}
               onConnectRepo={handleConnectRepo}
               composerDraftSignal={composerDraftSignal}
-              petConfig={config.pet}
-              onAdoptPet={onAdoptPetInline}
-              onTogglePet={onTogglePet}
-              onOpenPetSettings={onOpenPetSettings}
+              petConfig={embeddedMode ? undefined : config.pet}
+              onAdoptPet={embeddedMode ? undefined : onAdoptPetInline}
+              onTogglePet={embeddedMode ? undefined : onTogglePet}
+              onOpenPetSettings={embeddedMode ? undefined : onOpenPetSettings}
               researchAvailable={config.mode === 'daemon'}
               byokApiProtocol={config.apiProtocol}
               byokImageModel={byokImageModelOverride}
@@ -4524,6 +4530,7 @@ export function ProjectView({
               }}
               activePluginSnapshot={activePluginSnapshot}
               onCollapse={() => setWorkspaceFocused(true)}
+              embeddedMode={embeddedMode}
             />
           ) : (
             <div className="pane" data-testid="chat-pane-loading">
@@ -4589,6 +4596,7 @@ export function ProjectView({
           githubConnected={githubConnected}
           commentPortalId={commentInspectorPortalId}
           onCommentModeChange={setCommentInspectorActive}
+          embeddedMode={embeddedMode}
         />
       </div>
       {projectActionsToast ? (
