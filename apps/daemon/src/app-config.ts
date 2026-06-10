@@ -73,6 +73,18 @@ export interface AgentModelPrefs {
 
 export type AgentCliEnvPrefs = Record<string, Record<string, string>>;
 
+export type AppConfigExecMode = 'daemon' | 'api';
+export type AppConfigApiProtocol = 'anthropic' | 'openai' | 'azure' | 'google' | 'ollama' | 'senseaudio';
+
+export interface AppConfigApiProtocolPrefs {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiVersion?: string;
+  apiProviderBaseUrl?: string | null;
+  byokImageModel?: string;
+}
+
 export interface TelemetryPrefs {
   metrics?: boolean;
   content?: boolean;
@@ -86,6 +98,15 @@ export interface OrbitConfigPrefs {
 }
 
 export interface AppConfigPrefs {
+  mode?: AppConfigExecMode;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiProtocol?: AppConfigApiProtocol;
+  apiVersion?: string;
+  apiProviderBaseUrl?: string | null;
+  byokImageModel?: string;
+  apiProtocolConfigs?: Partial<Record<AppConfigApiProtocol, AppConfigApiProtocolPrefs>>;
   onboardingCompleted?: boolean;
   agentId?: string | null;
   agentModels?: Record<string, AgentModelPrefs>;
@@ -102,6 +123,15 @@ export interface AppConfigPrefs {
 }
 
 const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
+  'mode',
+  'apiKey',
+  'baseUrl',
+  'model',
+  'apiProtocol',
+  'apiVersion',
+  'apiProviderBaseUrl',
+  'byokImageModel',
+  'apiProtocolConfigs',
   'onboardingCompleted',
   'agentId',
   'agentModels',
@@ -122,6 +152,24 @@ function configFile(dataDir: string): string {
 }
 
 const AGENT_MODEL_KEYS: ReadonlySet<string> = new Set(['model', 'reasoning']);
+
+const EXEC_MODES: ReadonlySet<string> = new Set(['daemon', 'api']);
+const API_PROTOCOLS: ReadonlySet<string> = new Set([
+  'anthropic',
+  'openai',
+  'azure',
+  'google',
+  'ollama',
+  'senseaudio',
+]);
+const API_PROTOCOL_CONFIG_KEYS: ReadonlySet<string> = new Set([
+  'apiKey',
+  'baseUrl',
+  'model',
+  'apiVersion',
+  'apiProviderBaseUrl',
+  'byokImageModel',
+]);
 
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set([
   'metrics',
@@ -195,6 +243,31 @@ function validateAgentModels(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function validateApiProtocolConfigs(
+  raw: unknown,
+): Partial<Record<AppConfigApiProtocol, AppConfigApiProtocolPrefs>> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const result: Partial<Record<AppConfigApiProtocol, AppConfigApiProtocolPrefs>> = Object.create(null);
+  for (const [protocol, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!API_PROTOCOLS.has(protocol)) continue;
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+    const config: AppConfigApiProtocolPrefs = {};
+    for (const [key, configValue] of Object.entries(value as Record<string, unknown>)) {
+      if (!API_PROTOCOL_CONFIG_KEYS.has(key)) continue;
+      if (key === 'apiProviderBaseUrl') {
+        if (typeof configValue === 'string' || configValue === null) {
+          config.apiProviderBaseUrl = configValue;
+        }
+      } else if (typeof configValue === 'string') {
+        config[key as Exclude<keyof AppConfigApiProtocolPrefs, 'apiProviderBaseUrl'>] = configValue;
+      }
+    }
+    result[protocol as AppConfigApiProtocol] = config;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 export function validateAgentCliEnv(raw: unknown): AgentCliEnvPrefs | undefined {
   if (raw === undefined || raw === null) return undefined;
   if (typeof raw !== 'object' || Array.isArray(raw)) return undefined;
@@ -262,6 +335,37 @@ function applyConfigValue(
 ): void {
   if (key === 'onboardingCompleted') {
     if (typeof value === 'boolean') target[key] = value;
+    return;
+  }
+  if (key === 'mode') {
+    if (typeof value === 'string' && EXEC_MODES.has(value)) target[key] = value;
+    return;
+  }
+  if (key === 'apiProtocol') {
+    if (typeof value === 'string' && API_PROTOCOLS.has(value)) target[key] = value;
+    return;
+  }
+  if (
+    key === 'apiKey' ||
+    key === 'baseUrl' ||
+    key === 'model' ||
+    key === 'apiVersion' ||
+    key === 'byokImageModel'
+  ) {
+    if (typeof value === 'string') target[key] = value;
+    return;
+  }
+  if (key === 'apiProviderBaseUrl') {
+    if (typeof value === 'string' || value === null) target[key] = value;
+    return;
+  }
+  if (key === 'apiProtocolConfigs') {
+    const validated = validateApiProtocolConfigs(value);
+    if (validated !== undefined) {
+      target[key] = validated;
+    } else {
+      delete target[key];
+    }
     return;
   }
   if (key === 'agentId' || key === 'skillId' || key === 'designSystemId') {

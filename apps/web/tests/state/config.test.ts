@@ -201,6 +201,35 @@ describe('mergeDaemonConfig', () => {
     });
   });
 
+  it('uses daemon execution backend fields instead of stale local API state', () => {
+    const merged = mergeDaemonConfig(
+      {
+        ...DEFAULT_CONFIG,
+        mode: 'api',
+        apiKey: '',
+        apiProtocol: 'anthropic',
+        baseUrl: 'https://api.anthropic.com',
+        model: 'claude-sonnet-4-5',
+      },
+      {
+        mode: 'daemon',
+        agentId: 'codex',
+        agentModels: {
+          codex: { model: 'default', reasoning: 'default' },
+        },
+        agentCliEnv: {
+          codex: { CODEX_HOME: '/app/.codex', CODEX_BIN: '/usr/local/bin/codex' },
+        },
+      },
+    );
+
+    expect(merged.mode).toBe('daemon');
+    expect(merged.agentId).toBe('codex');
+    expect(merged.agentCliEnv).toEqual({
+      codex: { CODEX_HOME: '/app/.codex', CODEX_BIN: '/usr/local/bin/codex' },
+    });
+  });
+
   it('copies privacyDecisionAt from daemon config', () => {
     const merged = mergeDaemonConfig(DEFAULT_CONFIG, {
       installationId: 'install-1',

@@ -5,6 +5,18 @@ export interface AgentModelPrefs {
 
 export type AgentCliEnvPrefs = Record<string, Record<string, string>>;
 
+export type AppConfigExecMode = 'daemon' | 'api';
+export type AppConfigApiProtocol = 'anthropic' | 'openai' | 'azure' | 'google' | 'ollama' | 'senseaudio';
+
+export interface AppConfigApiProtocolPrefs {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiVersion?: string;
+  apiProviderBaseUrl?: string | null;
+  byokImageModel?: string;
+}
+
 export interface TelemetryPrefs {
   metrics?: boolean;
   content?: boolean;
@@ -20,6 +32,15 @@ export interface OrbitConfigPrefs {
 }
 
 export interface AppConfigPrefs {
+  mode?: AppConfigExecMode;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiProtocol?: AppConfigApiProtocol;
+  apiVersion?: string;
+  apiProviderBaseUrl?: string | null;
+  byokImageModel?: string;
+  apiProtocolConfigs?: Partial<Record<AppConfigApiProtocol, AppConfigApiProtocolPrefs>>;
   onboardingCompleted?: boolean;
   agentId?: string | null;
   agentModels?: Record<string, AgentModelPrefs>;

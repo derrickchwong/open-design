@@ -349,6 +349,50 @@ describe('app-config', () => {
       });
     });
 
+    it('persists execution backend fields and drops invalid protocol config keys', async () => {
+      await writeAppConfig(dataDir, {
+        mode: 'api',
+        apiProtocol: 'openai',
+        apiKey: 'sk-openai',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5.5',
+        apiProviderBaseUrl: 'https://api.openai.com/v1',
+        apiProtocolConfigs: {
+          openai: {
+            apiKey: 'sk-openai',
+            baseUrl: 'https://api.openai.com/v1',
+            model: 'gpt-5.5',
+            apiProviderBaseUrl: 'https://api.openai.com/v1',
+            rogue: 'ignored',
+          },
+          invalid: {
+            apiKey: 'ignored',
+          },
+        },
+      });
+
+      const cfg = await readAppConfig(dataDir);
+
+      expect(cfg).toMatchObject({
+        mode: 'api',
+        apiProtocol: 'openai',
+        apiKey: 'sk-openai',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5.5',
+        apiProviderBaseUrl: 'https://api.openai.com/v1',
+        apiProtocolConfigs: {
+          openai: {
+            apiKey: 'sk-openai',
+            baseUrl: 'https://api.openai.com/v1',
+            model: 'gpt-5.5',
+            apiProviderBaseUrl: 'https://api.openai.com/v1',
+          },
+        },
+      });
+      expect(cfg.apiProtocolConfigs?.openai).not.toHaveProperty('rogue');
+      expect(cfg.apiProtocolConfigs).not.toHaveProperty('invalid');
+    });
+
     it('drops agentCliEnv entries that collide with Object.prototype keys', async () => {
       await writeAppConfig(dataDir, {
         agentCliEnv: {

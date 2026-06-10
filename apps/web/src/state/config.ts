@@ -2,6 +2,7 @@ import type { AppConfigPrefs } from '@open-design/contracts';
 import { MEDIA_PROVIDERS } from '../media/models';
 import { isOpenAICompatible } from '../providers/openai-compatible';
 import type {
+  ApiProtocolConfig,
   ApiProtocol,
   AppConfig,
   MediaProviderCredentials,
@@ -20,6 +21,14 @@ import {
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 1;
+const API_PROTOCOLS = new Set<ApiProtocol>([
+  'anthropic',
+  'openai',
+  'azure',
+  'google',
+  'ollama',
+  'senseaudio',
+]);
 
 // Hatched out of the box, but tucked away — the user has to go through
 // either the entry-view "adopt a pet" callout or Settings → Pets to
@@ -616,6 +625,25 @@ function sanitizeAgentCliEnv(agentCliEnv: AppConfig['agentCliEnv']): AppConfig['
   return sanitized;
 }
 
+function normalizeDaemonApiProtocolConfigs(
+  configs: AppConfigPrefs['apiProtocolConfigs'],
+): AppConfig['apiProtocolConfigs'] {
+  if (!configs) return undefined;
+  const normalized: Partial<Record<ApiProtocol, ApiProtocolConfig>> = {};
+  for (const [protocol, config] of Object.entries(configs)) {
+    if (!API_PROTOCOLS.has(protocol as ApiProtocol) || !config) continue;
+    normalized[protocol as ApiProtocol] = {
+      apiKey: config.apiKey ?? '',
+      baseUrl: config.baseUrl ?? '',
+      model: config.model ?? '',
+      apiVersion: config.apiVersion ?? '',
+      apiProviderBaseUrl: config.apiProviderBaseUrl ?? null,
+      byokImageModel: config.byokImageModel ?? '',
+    };
+  }
+  return normalized;
+}
+
 export function saveConfig(config: AppConfig): void {
   const sanitized: AppConfig = { ...config, agentCliEnv: sanitizeAgentCliEnv(config.agentCliEnv) };
   for (const key of DAEMON_OWNED_KEYS) {
@@ -631,6 +659,42 @@ export function mergeDaemonConfig(
   const next = { ...localConfig };
   if (!daemonConfig) return next;
 
+  if (daemonConfig.mode === 'daemon' || daemonConfig.mode === 'api') {
+    next.mode = daemonConfig.mode;
+  }
+  if (typeof daemonConfig.apiKey === 'string') {
+    next.apiKey = daemonConfig.apiKey;
+  }
+  if (typeof daemonConfig.baseUrl === 'string') {
+    next.baseUrl = daemonConfig.baseUrl;
+  }
+  if (typeof daemonConfig.model === 'string') {
+    next.model = daemonConfig.model;
+  }
+  if (
+    typeof daemonConfig.apiProtocol === 'string' &&
+    API_PROTOCOLS.has(daemonConfig.apiProtocol as ApiProtocol)
+  ) {
+    next.apiProtocol = daemonConfig.apiProtocol as ApiProtocol;
+  }
+  if (typeof daemonConfig.apiVersion === 'string') {
+    next.apiVersion = daemonConfig.apiVersion;
+  }
+  if (
+    typeof daemonConfig.apiProviderBaseUrl === 'string' ||
+    daemonConfig.apiProviderBaseUrl === null
+  ) {
+    next.apiProviderBaseUrl = daemonConfig.apiProviderBaseUrl;
+  }
+  if (typeof daemonConfig.byokImageModel === 'string') {
+    next.byokImageModel = daemonConfig.byokImageModel;
+  }
+  if (daemonConfig.apiProtocolConfigs) {
+    next.apiProtocolConfigs = {
+      ...(next.apiProtocolConfigs ?? {}),
+      ...normalizeDaemonApiProtocolConfigs(daemonConfig.apiProtocolConfigs),
+    };
+  }
   if (daemonConfig.onboardingCompleted != null) {
     next.onboardingCompleted = daemonConfig.onboardingCompleted;
   }

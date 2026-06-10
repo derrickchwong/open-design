@@ -424,21 +424,6 @@ function AppInner() {
     }, { replace: true });
   }, [repaveEmbeddedProjectId, route]);
   useEffect(() => {
-    if (!embeddedMode) return;
-    if (config.mode === 'daemon' && config.agentId === 'codex') return;
-    setConfig((prev) => {
-      if (prev.mode === 'daemon' && prev.agentId === 'codex') return prev;
-      const next: AppConfig = {
-        ...prev,
-        mode: 'daemon',
-        agentId: 'codex',
-      };
-      saveConfig(next);
-      void syncConfigToDaemon(next);
-      return next;
-    });
-  }, [embeddedMode, config.mode, config.agentId]);
-  useEffect(() => {
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
       : { active: false };
