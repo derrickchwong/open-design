@@ -68,9 +68,17 @@ RUN pnpm --filter @open-design/daemon build && \
 
 FROM ${RUNTIME_IMAGE}
 
-RUN apk add --no-cache tini poppler-utils && \
+ARG CLAUDE_CODE_VERSION=2.1.170
+ARG CODEX_CLI_VERSION=0.139.0
+
+RUN apk add --no-cache tini poppler-utils bash git curl ca-certificates && \
     addgroup -S -g 1001 open-design && \
-    adduser -S -D -H -u 1001 -G open-design open-design
+    adduser -S -D -H -u 1001 -G open-design open-design && \
+    npm install -g \
+      @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
+      @openai/codex@${CODEX_CLI_VERSION} && \
+    claude --version && \
+    codex --version
 
 WORKDIR /app
 COPY --from=build --chown=open-design:open-design /app/deploy/daemon ./apps/daemon
@@ -93,6 +101,9 @@ RUN mkdir -p /app/.od && \
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--max-old-space-size=192
+ENV HOME=/app
+ENV CLAUDE_CODE_PATH=/usr/local/bin/claude
+ENV CODEX_CLI_PATH=/usr/local/bin/codex
 ENV OD_BIND_HOST=0.0.0.0
 ENV OD_PORT=7456
 
